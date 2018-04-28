@@ -9,6 +9,7 @@ import java.util.*;
 import java.io.*;
 import org.json.simple.JSONObject;
 import java.util.Vector; //most likely based on Cole's explanation
+import java.util.concurrent.*;
 import java.util.HashMap; //most likely based on Cole's explanation
 
 public class ChatServer
@@ -43,8 +44,6 @@ public class ChatServer
             while (true) 
             { 
                 // infinite loop in order to listen for new clients
-                Socket server = server.accept();
-
                 // add new client socket connection
                 // using runnable and execute
                 

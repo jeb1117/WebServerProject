@@ -40,10 +40,10 @@ public class Handler
 		}
 		
 		// user name too long
-		else
-		{
-			// chatroom-error
-		}
+//		else
+//		{
+//			// chatroom-error
+//		}
 
 	}
 
