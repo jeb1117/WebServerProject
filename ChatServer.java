@@ -9,17 +9,15 @@ import java.util.*;
 import java.io.*;
 import org.json.simple.JSONObject;
 import java.util.Vector; //most likely based on Cole's explanation
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.HashMap; //most likely based on Cole's explanation
 
 public class ChatServer
 {
     public static final int PORT = 8029;
-    public static final int maxClients; //declare how many l8r
+    public static final int maxClients = 5; //can change at any time
 
     // create thread pool --> https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/Executors.html
-    private static final ExecutorService executor = Executors.newCachedThreadPool();
+    private static final Executor executor = Executors.newCachedThreadPool();
 
 
 
@@ -28,6 +26,9 @@ public class ChatServer
         // create a server socket listening to port 8029
         ServerSocket server = new ServerSocket(PORT);
         System.out.println("Waiting for connections ....");
+        Vector<JSONObject> message = new Vector<JSONObject>();
+        Vector<Integer> idCount = new Vector<Integer>();
+        
         
         // run & execute chatroom
 
@@ -36,14 +37,13 @@ public class ChatServer
             // makes sure that we are still within the chatroom client limits
             for(int i=0; i < maxClients; i++)
             {
-                //add to clients until max reached
+            	idCount.add(i);
             }
-            
-            // infinite loop in order to listen for new clients
+
             while (true) 
             { 
-                
-                Socket client = server.accept();
+                // infinite loop in order to listen for new clients
+                Socket server = server.accept();
 
                 // add new client socket connection
                 // using runnable and execute
