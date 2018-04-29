@@ -43,6 +43,7 @@ public class ChatroomClient
 	        chat.put("message-length", userInput.length());
 			
 		}
+		
 	}
 	
 	public ChatroomClient(Socket server, String userName)
