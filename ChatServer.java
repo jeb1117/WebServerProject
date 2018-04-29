@@ -8,9 +8,9 @@ import java.net.*;
 import java.util.*;
 import java.io.*;
 import org.json.simple.JSONObject;
-import java.util.Vector; //most likely based on Cole's explanation
+import java.util.Vector; 
 import java.util.concurrent.*;
-import java.util.HashMap; //most likely based on Cole's explanation
+
 
 public class ChatServer
 {
@@ -29,13 +29,17 @@ public class ChatServer
         System.out.println("Waiting for connections ....");
         Vector<JSONObject> message = new Vector<JSONObject>();
         Vector<Integer> idCount = new Vector<Integer>();
+
         
         
         // run & execute chatroom
-
+            // makes sure that we are still within the chatroom client limits
+        ConcurrentHashMap<String, Socket> userName = new ConcurrentHashMap<String, Socket>();
+        
+        // run & execute chat room
         try
         {
-            // makes sure that we are still within the chatroom client limits
+            // makes sure that we are still within the chat room client limits
             for(int i=0; i < maxClients; i++)
             {
             	idCount.add(i);
@@ -46,7 +50,11 @@ public class ChatServer
                 // infinite loop in order to listen for new clients
                 // add new client socket connection
                 // using runnable and execute
-                
+                // create thread, add new userName
+            	
+            	Runnable thread  = new Connection(server.accept(), userName,  message, idCount);
+                executor.execute(thread);
+
             }
         }
 
@@ -62,4 +70,3 @@ public class ChatServer
         }
     }
 }
-
