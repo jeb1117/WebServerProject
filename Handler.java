@@ -21,25 +21,30 @@ public class Handler
 	private static AtomicLong idCount = new AtomicLong();
 
 
-	public void addClient(Socket client, HashMap<String, Socket> users) throws IOException
+	public void addClient(Socket client, HashMap<String, Socket> userName) throws IOException
 	{
 
-		if() 
-		{
-			if(idCount == null) {
-				startChat.put("id", idCount.incrementAndGet());
-				startChat.put("clientNo", users.size());
-				startChat.put("users", users.keySet().toArray());
-				System.out.println("A new person has joined");
-			}
-			else {
-				startChat.put("id", new Integer(-1));
-				startChat.put("clientNo", users.size());
-				startChat.put("users", users.keySet().toArray());
-			}
+
+		// there is room for more clients
+		if(idCount == null) {
+			startChat.put("id", idCount.incrementAndGet());
+			startChat.put("clientNo", userName.size());
+			startChat.put("userName", userName.keySet().toArray());
+			System.out.println("A new person has joined");
+		}
+		// amount of clients allowed is full
+		else {
+			startChat.put("id", new Integer(-1));
+			startChat.put("clientNo", userName.size());
+			startChat.put("userName", userName.keySet().toArray());
 		}
 
 	}
+	// user name too long
+	//	else
+	//	{
+	//		// chatroom-error
+	//	}
 
 	public void sendMsg() {
 
@@ -87,7 +92,7 @@ public class Handler
 		readIt.start();
 	}
 	public static void main(String[] args) throws IOException{
-		ChatRoom server = new ChatRoom();
+		ChatServer server = new ChatServer();
 	}
 
 }
