@@ -22,17 +22,21 @@ public class Connection implements Runnable
 	private static Handler handler = new Handler();
 	private Vector<JSONObject> message;
 	private Vector<Integer> idCount;
+	private JSONObject sendMess;
 
-	public Connection(Socket client, ConcurrentHashMap<String, Socket> userName, Vector<JSONObject> message, Vector<Integer> idCount) {
+	public Connection(Socket client, ConcurrentHashMap<String, Socket> userName, Vector<JSONObject> message, Vector<Integer> idCount, JSONObject sendMess) {
 		this.client = client;
 		this.userName = userName;
 		this.message = message;
 		this.idCount = idCount;
+		this.sendMess = sendMess;
 	}
 
 	public void run(){
 		try {
 		handler.addClient(client, userName, message, idCount);
+		handler.broadCast(client, userName, message, idCount, sendMess);
+		handler.sendMsg(idCount);
 	}
 	catch (java.io.IOException ioe) {
 		System.err.println(ioe);

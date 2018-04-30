@@ -35,6 +35,7 @@ public class ChatroomClient
 		
 		while(true)
 		{
+			//type cast
 			userInput = reader.readLine();
 			chat.put("type", "chatroom-send");
 	        chat.put("from", userName);

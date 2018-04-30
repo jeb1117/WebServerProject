@@ -18,15 +18,18 @@ public class Handler
 	DataOutputStream ret;
 	static Scanner write = new Scanner(System.in);
 	public JSONObject startChat = new JSONObject();
-	private static AtomicLong idCount = new AtomicLong();
 
 
+	@SuppressWarnings("unchecked")
 	public void addClient(Socket client, ConcurrentHashMap<String, Socket> userName, Vector<JSONObject> message, Vector<Integer> idCount) throws IOException
 	{
-		{
+		if(idCount.lastElement() < 20 && userName.size() < 20){
+
+			startChat.put("type", "chatroom-response");
 			// there is room for more clients
-			if(idCount == null) {
-				startChat.put("id", idCount.incrementAndGet()); //idk why this is throwing an error
+			if(idCount.isEmpty()) {
+
+				startChat.put("id", idCount); //idk why this is throwing an error
 				startChat.put("clientNo", userName.size());
 				startChat.put("userName", userName.keySet().toArray());
 				System.out.println("A new person has joined");
@@ -38,26 +41,78 @@ public class Handler
 				startChat.put("userName", userName.keySet().toArray());
 			}
 		}
-		
+
 		// user name too long
-//		else
-//		{
-//			// chatroom-error
-//		}
+		else
+		{
+			startChat.put("type", "chatroom-error");
+			String [] errorType = {"user_name_length_exceeded"};
+			startChat.put("type_of_error", errorType);
+
+		}
 
 	}
 
-	public void sendMsg() {
+	public void broadCast(Socket client, ConcurrentHashMap<String, Socket> userName, Vector<JSONObject> message, Vector<Integer> idCount, JSONObject sendMess) throws IOException
+	{
+		JSONObject broadcast = new JSONObject();
+		try {
+			ret = new DataOutputStream(client.getOutputStream());
+			while(true) 
+			{
+				broadcast.put("type", "chatroom-broadcast");
+				broadcast.put("from", userName);
+				broadcast.put("to", "[]");
+				broadcast.put("message", sendMess);
+				broadcast.put("len", ret.size());
+				try
+				{
+					Thread.sleep(1000);
+				}
+				catch(InterruptedException ioe)
+				{ }
+				
 
+			}
+		}
+		catch(IOException ioe)
+		{
+			System.out.println(ioe);
+		}
+		finally 
+		{
+			if(chat != null)
+			{
+				chat.close();
+			}
+		}
+
+	}
+
+
+	@SuppressWarnings("unchecked")
+	public void sendMsg(Vector<Integer> idCount) {
+
+		int end = idCount.remove(0);
+		JSONObject sendMess = new JSONObject();
 		Thread sendIt = new Thread(new Runnable()
 		{
+
 			public void run()
 			{
 
 				String msg = write.nextLine();
 				try
 				{
-					ret.writeUTF(msg);
+					if(ret.size() < 280) {
+						ret.writeUTF(msg);
+						sendMess.put("message", ret);
+					}
+					else {
+						sendMess.put("type", "chatroom-error");
+						String[] errorType = {"message_exceeded_max_length"};
+						sendMess.put("type_of_error", errorType);
+					}
 				}
 				catch(IOException e)
 				{
@@ -68,6 +123,7 @@ public class Handler
 
 		Thread readIt = new Thread(new Runnable()
 		{
+
 			public void run()
 			{
 				while(true)
@@ -79,6 +135,14 @@ public class Handler
 						{
 							msg = chat.readUTF();
 							System.out.println(msg);
+						}
+						else
+						{
+							sendMess.put("type", "chatroom-end");
+							sendMess.put("id", end);
+							sendMess.put("type", "chatroom-update");
+							sendMess.put("type_of_update", idCount.size()); //not sure about this
+							sendMess.put("id", end);
 						}
 					}
 					catch(IOException e)
@@ -92,9 +156,6 @@ public class Handler
 		sendIt.start();
 		readIt.start();
 	}
-	public static void main(String[] args) throws IOException{
-		ChatServer server = new ChatServer();
 
-	}
 
 }

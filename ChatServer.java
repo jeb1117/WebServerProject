@@ -29,6 +29,7 @@ public class ChatServer
         System.out.println("Waiting for connections ....");
         Vector<JSONObject> message = new Vector<JSONObject>();
         Vector<Integer> idCount = new Vector<Integer>();
+        JSONObject sendMess = new JSONObject();
 
         
         
@@ -52,7 +53,7 @@ public class ChatServer
                 // using runnable and execute
                 // create thread, add new userName
             	
-            	Runnable thread  = new Connection(server.accept(), userName,  message, idCount);
+            	Runnable thread  = new Connection(server.accept(), userName,  message, idCount, sendMess);
                 executor.execute(thread);
 
             }
