@@ -17,31 +17,44 @@ public class ChatroomClient
 	private Socket server;
 	public JSONObject user = new JSONObject();
 	public JSONObject chat = new JSONObject();
+	PrintWriter write = null;
+
 	
-	public void addClient(Socket client, String users) throws IOException
+	public void addClient(Socket server, String userName) throws IOException
 	{
+		try
+		{
 		//read users input about user name
-		BufferedReader reader = null;
+		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
 		String userInput;
-		System.out.println("Please enter your desired username");
+		System.out.println("Please enter your desired username; must be less 20 character");
 		userInput = reader.readLine();
 		
-		//if statement checking length of user name then:
 		//create user name with JSON
 		user.put("type", "chatroom-begin");
 		user.put("id", userInput);
 		user.put("len", userInput.length());
-		userName = userInput;
+		userName = userInput; //save's a user name to a variable
+		
+		write = new PrintWriter("ChatRoom.json");
+		write.write(user.toString());
 		
 		while(true)
 		{
-			//type cast
-			userInput = reader.readLine();
+			userInput = reader.readLine(); // reads message from client 
 			chat.put("type", "chatroom-send");
 	        chat.put("from", userName);
 	        chat.put("message", userInput);
-	        chat.put("to", new String[0]);
+	        chat.put("to", "[]");
 	        chat.put("message-length", userInput.length());
+			
+		}
+		}
+		catch(IOException ioe){}
+		finally
+		{
+			server.close();
+			write.close();
 			
 		}
 		
@@ -63,5 +76,8 @@ public class ChatroomClient
 		      System.err.println(ioe);
 		    }
 	}
+	
+	
+	
 
 }

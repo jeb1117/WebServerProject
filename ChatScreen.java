@@ -12,15 +12,36 @@
 
 import java.awt.*;
 import java.awt.event.*;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Vector;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+
 import javax.swing.*;
 import javax.swing.border.*;
 
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+
 public class ChatScreen extends JFrame implements ActionListener, KeyListener
 {
+
+	public static final int DEFAULT_PORT = 8029;
+	private static final Executor exec = Executors.newCachedThreadPool();
 	private JButton sendButton;
 	private JButton exitButton;
 	private JTextField sendText;
 	private JTextArea displayArea;
+	private Socket server = null;
+	private Vector<String> clients = new Vector<String>();
+	private String user = null;
+	private static String ipNum = null;
+	private PrintWriter printThis = null;
+	private JList checkList;
 
 	public ChatScreen() {
 		/**
@@ -42,7 +63,7 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 		/**
 		 * register the listeners for the different button clicks
 		 */
-        sendText.addKeyListener(this);
+		sendText.addKeyListener(this);
 		sendButton.addActionListener(this);
 		exitButton.addActionListener(this);
 
@@ -88,28 +109,59 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 
 	}
 
-        /**
-         * This gets the text the user entered and outputs it
-         * in the display area.
-         */
-        public void displayText() {
-            String message = sendText.getText().trim();
-            StringBuffer buffer = new StringBuffer(message.length());
+	/**
+	 * These methods responds to keystroke events and fulfills
+	 * the contract of the KeyListener interface.
+	 */	
+	public void sendToUser() {
+		String mess = sendText.getText().trim();
+		JSONObject sendMessage = new JSONObject();
+		sendMessage.put("type", "chatroom-send");
+		sendMessage.put("from", user);
+		sendMessage.put("message", mess);
+		ArrayList<String> selection = new ArrayList(checkList.getSelectedValuesList());
+		if(!selection.isEmpty())
+		{
+			String[] selectionArray = selection.toArray(new String[selection.size()]);
+			JSONArray receiveThis = new JSONArray();
+			for(int i = 0; i < selectionArray.length; i ++){
+				receiveThis.add(selectionArray[i]);
+			}
+			sendMessage.put("to", receiveThis);
+		}
+		else
+		{
+			sendMessage.put("to", new JSONArray());
+		}
+		sendMessage.put("message-length", mess.length());
+		printThis.println(sendMessage.toString());
 
-            // now reverse it
-            for (int i = message.length()-1; i >= 0; i--)
-                buffer.append(message.charAt(i));
+		sendText.setText("");
+		sendText.requestFocus();
+	}
+	
+	/**
+	 * This gets the text the user entered and outputs it
+	 * in the display area.
+	 */
+	public void displayText() {
+		String message = sendText.getText().trim();
+		StringBuffer buffer = new StringBuffer(message.length());
 
-            displayArea.append(buffer.toString() + "\n");
+		// now reverse it
+		for (int i = message.length()-1; i >= 0; i--)
+			buffer.append(message.charAt(i));
 
-            sendText.setText("");
-            sendText.requestFocus();
-        }
+		displayArea.append(buffer.toString() + "\n");
+
+		sendText.setText("");
+		sendText.requestFocus();
+	}
 
 
 	/**
 	 * This method responds to action events .... i.e. button clicks
-         * and fulfills the contract of the ActionListener interface.
+	 * and fulfills the contract of the ActionListener interface.
 	 */
 	public void actionPerformed(ActionEvent evt) {
 		Object source = evt.getSource();
@@ -120,26 +172,46 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 			System.exit(0);
 	}
 
-        /**
-         * These methods responds to keystroke events and fulfills
-         * the contract of the KeyListener interface.
-         */
+	
+	/**
+	 * This is invoked when the user presses
+	 * the ENTER key.
+	 */
+	public void keyPressed(KeyEvent e) {
+		if (e.getKeyCode() == KeyEvent.VK_ENTER)
+			displayText();
+	}
 
-        /**
-         * This is invoked when the user presses
-         * the ENTER key.
-         */
-        public void keyPressed(KeyEvent e) {
-            if (e.getKeyCode() == KeyEvent.VK_ENTER)
-                displayText();
-        }
+	/** Not implemented */
+	public void keyReleased(KeyEvent e) { }
 
-        /** Not implemented */
-        public void keyReleased(KeyEvent e) { }
+	/** Not implemented */
+	public void keyTyped(KeyEvent e) {  }
 
-        /** Not implemented */
-        public void keyTyped(KeyEvent e) {  }
+	public void setUpServer(JPanel userInput)
+	{
+		ipNum = JOptionPane.showInputDialog(userInput, "Enter Server IP:", null);
+		
+		try {
+			server = new Socket(ipNum, DEFAULT_PORT);
+			printThis = new PrintWriter(server.getOutputStream(), true);
+			System.out.println("User Has Connected.");
+			user = JOptionPane.showInputDialog(userInput, "Enter Your Desired Username:", null);
+			JSONObject json = new JSONObject();
+			json.put("type", "chatroom-begin");
+			json.put("username", user);
+			json.put("len", user.length());
+			printThis.println(json.toString());
+		} catch (UnknownHostException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 
+	}
 
 	public static void main(String[] args) {
 		JFrame win = new ChatScreen();

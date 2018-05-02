@@ -1,9 +1,14 @@
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.Vector;
@@ -11,151 +16,195 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.json.simple.*;
 
+import com.sun.xml.internal.ws.api.message.Messages;
+
 public class Handler
 {
 	static Socket sock;
-	DataInputStream chat;
-	DataOutputStream ret;
-	static Scanner write = new Scanner(System.in);
 	public JSONObject startChat = new JSONObject();
+	public JSONObject continueChat = new JSONObject();
+	public JSONObject broadcast = new JSONObject();
+	BufferedReader read = null;
+	PrintWriter writer = null;
 
 
-	@SuppressWarnings("unchecked")
+
+
 	public void addClient(Socket client, ConcurrentHashMap<String, Socket> userName, Vector<JSONObject> message, Vector<Integer> idCount) throws IOException
 	{
-		if(idCount.lastElement() < 20 && userName.size() < 20){
-
-			startChat.put("type", "chatroom-response");
-			// there is room for more clients
-			if(idCount.isEmpty()) {
-
-				startChat.put("id", idCount); //idk why this is throwing an error
-				startChat.put("clientNo", userName.size());
-				startChat.put("userName", userName.keySet().toArray());
-				System.out.println("A new person has joined");
-			}
-			// amount of clients allowed is full
-			else {
-				startChat.put("id", new Integer(-1));
-				startChat.put("clientNo", userName.size());
-				startChat.put("userName", userName.keySet().toArray());
-			}
-		}
-
-		// user name too long
-		else
-		{
-			startChat.put("type", "chatroom-error");
-			String [] errorType = {"user_name_length_exceeded"};
-			startChat.put("type_of_error", errorType);
-
-		}
-
-	}
-
-	public void broadCast(Socket client, ConcurrentHashMap<String, Socket> userName, Vector<JSONObject> message, Vector<Integer> idCount, JSONObject sendMess) throws IOException
-	{
-		JSONObject broadcast = new JSONObject();
+		Iterator iterate = null;
 		try {
-			ret = new DataOutputStream(client.getOutputStream());
-			while(true) 
-			{
-				broadcast.put("type", "chatroom-broadcast");
-				broadcast.put("from", userName);
-				broadcast.put("to", "[]");
-				broadcast.put("message", sendMess);
-				broadcast.put("len", ret.size());
-				try
+
+			String mess = read.readLine();
+			//parse the request from dealio 
+			JSONObject chats = new JSONObject((JSONObject)JSONValue.parse(mess));
+			Long start = (Long) chats.get("len");
+
+			//check to see if user name is too long (20 is max) 
+			if(start.intValue() < 20){
+
+				//begin dealio for chatroom-response
+				startChat.put("type", "chatroom-response");
+
+				// there is room for more clients
+				if(!idCount.isEmpty()) 
 				{
-					Thread.sleep(1000);
+
+					startChat.put("id", idCount);
+					startChat.put("clientNo", userName.size());
+					startChat.put("userName", userName.keySet().toArray());
+
+					//combine username and id in system for one chunk
+					String userID = startChat.get("userName").toString() + " " + idCount;
+
+					// dealio for chatroom-update -- for every new user
+					startChat.put("type", "chatroom-update");
+					startChat.put("type_of_update", "enter");
+					startChat.put("id", userID);
+					message.add(startChat);
+
 				}
-				catch(InterruptedException ioe)
-				{ }
-				
+
+				// amount of clients allowed is full -- finishes up dealio
+				else {
+
+					startChat.put("id", new Integer(-1));
+					startChat.put("clientNo", userName.size());
+					startChat.put("userName", userName.keySet().toArray());
+
+				}
+			}
+
+			// user name too long (greater than 20) -- throw chatroom-error dealio 
+			else
+			{
+
+				startChat.put("type", "chatroom-error");
+				String[] error = {"user_name_length_exceeded"};
+				startChat.put("type_of_error" , error); 
 
 			}
-		}
-		catch(IOException ioe)
-		{
-			System.out.println(ioe);
-		}
-		finally 
-		{
-			if(chat != null)
+
+			writer = new PrintWriter(client.getOutputStream(), true);
+			writer.println(startChat.toString());
+
+			while(true)
 			{
-				chat.close();
+				if(read.ready())
+				{
+					
+					String anotherDealio = read.readLine();
+					JSONObject continueChat = new JSONObject((JSONObject)JSONValue.parse(anotherDealio));
+					String request = continueChat.get("type").toString();
+
+					if(request.equals("chatroom-send"))
+					{
+
+						while(!message.isEmpty())
+						{
+
+							JSONObject removedMessage = message.remove(0);
+							System.out.println(removedMessage);
+							iterate = userName.entrySet().iterator();
+							Long remove = (Long) removedMessage.get("len");
+
+							if(remove < 280)
+							{
+								
+								
+								String toMess = (String) removedMessage.get("to");
+
+								if(removedMessage.get("type").toString().equals("chatroom-update"))
+								{
+									while(iterate.hasNext())
+									{
+										Map.Entry getNext = (Map.Entry)iterate.next();
+										Socket next = (Socket) getNext.getValue();
+										System.out.println(getNext.getValue());
+										writer = new PrintWriter(next.getOutputStream(), true);
+										writer.println(message.toString());
+
+									}
+								}
+								//uses broadcast to send the message to everyone. 
+								else if(removedMessage.get("type").toString().equals("chatroom-send"))
+								{
+									broadCast(removedMessage, message);
+								}
+								//chatroom-special, since it is not implemented there will be the chatroom-error. 
+								else if(removedMessage.get("type").toString().equals("chatroom-special"))
+								{
+									removedMessage.put("type", "chatroom-error");
+									removedMessage.put("type_of_error", "special_unsupported");
+								}
+							}
+
+							//message is too long (greater than 280), throw chatroom-error dealio
+							else
+							{
+								
+								continueChat.put("type", "chatroom-error");
+								String [] error = {"message_exceeded_max_length"};
+								continueChat.put("id", error);
+								
+							}
+							try 
+							{ 
+								Thread.sleep(1000); 
+							} 
+							catch (InterruptedException ignore) { }
+						}
+
+					}
+				}
 			}
+		}
+		catch(IOException e){
+			System.out.println(e);
+		}
+		finally
+		{
+			read.close();
+			writer.close();
+			client.close();
+
 		}
 
 	}
 
-
-	@SuppressWarnings("unchecked")
-	public void sendMsg(Vector<Integer> idCount) {
-
-		int end = idCount.remove(0);
-		JSONObject sendMess = new JSONObject();
-		Thread sendIt = new Thread(new Runnable()
+	private static void broadCast(JSONObject json, Vector<JSONObject> message) throws IOException
+	{
+		PrintWriter writer = null;
+		Iterator iterate = null;
+		JSONObject removedMessage = message.remove(0);
+		String whoFrom = (String) json.get("from");
+		String whoTo = (String) json.get("to");
+		String mess =  (String) json.get("message");
+		
+		if(whoTo.equals("[]"))
 		{
+			Map.Entry getNext = (Map.Entry)iterate.next();
+			Socket next = (Socket) getNext.getValue();
+			System.out.println(getNext.getValue());
+			writer = new PrintWriter(next.getOutputStream(), true);
+			writer.println(message.toString());
 
-			public void run()
-			{
+		}
+		
+		int length = ((Long)json.get("len")).intValue();
+		JSONObject broadcast = new JSONObject();
+		broadcast.put("type", "chatroom-broadcast");
+		broadcast.put("from", whoFrom);
+		broadcast.put("to", whoTo);
+		broadcast.put("message", mess);
+		broadcast.put("len", length);
 
-				String msg = write.nextLine();
-				try
-				{
-					if(ret.size() < 280) {
-						ret.writeUTF(msg);
-						sendMess.put("message", ret);
-					}
-					else {
-						sendMess.put("type", "chatroom-error");
-						String[] errorType = {"message_exceeded_max_length"};
-						sendMess.put("type_of_error", errorType);
-					}
-				}
-				catch(IOException e)
-				{
-					e.printStackTrace();
-				}
-			}
-		});
+		message.add(broadcast);
 
-		Thread readIt = new Thread(new Runnable()
-		{
 
-			public void run()
-			{
-				while(true)
-				{
-					try
-					{
-						String msg = "";
-						if(!msg.equals("exit"))
-						{
-							msg = chat.readUTF();
-							System.out.println(msg);
-						}
-						else
-						{
-							sendMess.put("type", "chatroom-end");
-							sendMess.put("id", end);
-							sendMess.put("type", "chatroom-update");
-							sendMess.put("type_of_update", idCount.size()); //not sure about this
-							sendMess.put("id", end);
-						}
-					}
-					catch(IOException e)
-					{
-						e.printStackTrace();
-					}
-				}
-			}
-		});
-
-		sendIt.start();
-		readIt.start();
 	}
-
 
 }
+
+
+
