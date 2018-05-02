@@ -32,6 +32,7 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 
 	public static final int DEFAULT_PORT = 8029;
 	private static final Executor exec = Executors.newCachedThreadPool();
+	private StringBuilder endChats = new StringBuilder();
 	private JButton sendButton;
 	private JButton exitButton;
 	private JTextField sendText;
@@ -101,8 +102,18 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 		sendText.requestFocus();
 
 		/** anonymous inner class to handle window closing events */
+		
 		addWindowListener(new WindowAdapter() {
 			public void windowClosing(WindowEvent evt) {
+				JSONObject endChat = new JSONObject();
+				if(server != null)
+				{
+					//puts chatroom-end into json format
+					endChat.put("type", "chatroom-end");
+					endChat.put("id", endChats.toString());
+					//prints the string to end the actual chat
+					printThis.println(endChat.toString());
+				}
 				System.exit(0);
 			}
 		} );
@@ -112,6 +123,7 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 	/**
 	 * These methods responds to keystroke events and fulfills
 	 * the contract of the KeyListener interface.
+	 * Gets the json for the chatroom-send. Checks the message/message length. 
 	 */	
 	public void sendToUser() {
 		String mess = sendText.getText().trim();
@@ -119,13 +131,15 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 		sendMessage.put("type", "chatroom-send");
 		sendMessage.put("from", user);
 		sendMessage.put("message", mess);
-		ArrayList<String> selection = new ArrayList(checkList.getSelectedValuesList());
-		if(!selection.isEmpty())
+		//creates an array list to grab the items in the check list. 
+		ArrayList<String> client = new ArrayList(checkList.getSelectedValuesList());
+		if(!client.isEmpty())
 		{
-			String[] selectionArray = selection.toArray(new String[selection.size()]);
+			
+			String[] clientList = client.toArray(new String[client.size()]);
 			JSONArray receiveThis = new JSONArray();
-			for(int i = 0; i < selectionArray.length; i ++){
-				receiveThis.add(selectionArray[i]);
+			for(int i = 0; i < clientList.length; i ++){
+				receiveThis.add(clientList[i]);
 			}
 			sendMessage.put("to", receiveThis);
 		}
@@ -202,6 +216,9 @@ public class ChatScreen extends JFrame implements ActionListener, KeyListener
 			json.put("username", user);
 			json.put("len", user.length());
 			printThis.println(json.toString());
+			
+//			Runnable 
+//			exec.execute();
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

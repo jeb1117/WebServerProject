@@ -92,7 +92,7 @@ public class Handler
 			{
 				if(read.ready())
 				{
-					
+
 					String anotherDealio = read.readLine();
 					JSONObject continueChat = new JSONObject((JSONObject)JSONValue.parse(anotherDealio));
 					String request = continueChat.get("type").toString();
@@ -107,18 +107,20 @@ public class Handler
 							System.out.println(removedMessage);
 							iterate = userName.entrySet().iterator();
 							Long remove = (Long) removedMessage.get("len");
-
+								
 							if(remove < 280)
 							{
-								
-								
+
+								Map.Entry getNext = (Map.Entry)iterate.next();
+
 								String toMess = (String) removedMessage.get("to");
+								String whoFrom = (String) removedMessage.get("from").toString();
 
 								if(removedMessage.get("type").toString().equals("chatroom-update"))
 								{
 									while(iterate.hasNext())
 									{
-										Map.Entry getNext = (Map.Entry)iterate.next();
+
 										Socket next = (Socket) getNext.getValue();
 										System.out.println(getNext.getValue());
 										writer = new PrintWriter(next.getOutputStream(), true);
@@ -126,7 +128,26 @@ public class Handler
 
 									}
 								}
-								//uses broadcast to send the message to everyone. 
+								else if(removedMessage.get("type").toString().equals("chatroom-broadcast"))
+								{
+									System.out.println("Broadcasting to Users");
+									while (iterate.hasNext()) {
+										if(toMess.equals("[]"))
+										{
+											Socket next = (Socket) getNext.getValue();
+											System.out.println(getNext.getValue());
+											writer = new PrintWriter(((Socket)getNext.getValue()).getOutputStream(), true);
+											writer.println(message.toString());
+
+										}
+										if(whoFrom.equals(getNext.getKey())){
+							                writer = new PrintWriter(((Socket)getNext.getValue()).getOutputStream(), true);
+							                writer.println(message.toString());
+							              }
+
+									}
+								}
+								//uses broadcast to cast
 								else if(removedMessage.get("type").toString().equals("chatroom-send"))
 								{
 									broadCast(removedMessage, message);
@@ -142,11 +163,11 @@ public class Handler
 							//message is too long (greater than 280), throw chatroom-error dealio
 							else
 							{
-								
+
 								continueChat.put("type", "chatroom-error");
 								String [] error = {"message_exceeded_max_length"};
 								continueChat.put("id", error);
-								
+
 							}
 							try 
 							{ 
@@ -180,17 +201,8 @@ public class Handler
 		String whoFrom = (String) json.get("from");
 		String whoTo = (String) json.get("to");
 		String mess =  (String) json.get("message");
-		
-		if(whoTo.equals("[]"))
-		{
-			Map.Entry getNext = (Map.Entry)iterate.next();
-			Socket next = (Socket) getNext.getValue();
-			System.out.println(getNext.getValue());
-			writer = new PrintWriter(next.getOutputStream(), true);
-			writer.println(message.toString());
 
-		}
-		
+
 		int length = ((Long)json.get("len")).intValue();
 		JSONObject broadcast = new JSONObject();
 		broadcast.put("type", "chatroom-broadcast");
